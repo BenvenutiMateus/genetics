@@ -8,6 +8,8 @@ The broader objective is to explore methods for learning **genotype–phenotype 
 
 ## Research Context
 
+You can see the related papers at [`Important papers ➔`](papers.md).
+
 This research is developed within the **Department of Statistics at the Federal University of São Carlos (UFSCar)**.
 
 **Funding:** Conselho Nacional de Desenvolvimento Científico e Tecnológico — **CNPq**

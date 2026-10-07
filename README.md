@@ -15,11 +15,11 @@ The dataset contains approximately:
 
 Therefore, the problem is strongly high-dimensional:
 
-\[
-p \gg n
-\]
+**p ≫ n**
 
-The methodology is inspired by:
+where `p` represents the number of candidate variables and `n` the number of individuals.
+
+The methodology is primarily inspired by:
 
 **Fellinghauer et al. — Stable Graphical Model Estimation with Random Forests for Discrete, Continuous, and Mixed Variables**
 
@@ -51,24 +51,24 @@ Selection frequencies
 Stable graph
 ```
 
-For each target variable, Random Forest models are fitted using the remaining variables as predictors.
+For each target variable, a Random Forest model is fitted using the remaining variables as predictors.
 
 Variable relevance is primarily evaluated using **Permutation Importance**.
 
-Following the approach of Fellinghauer et al., predictor rankings are combined to rank possible graph edges.
+Following the approach of Fellinghauer et al., predictor rankings are combined to rank candidate graph edges.
 
-The parameter \(q\) represents the **maximum number of edges selected globally in each subsample**, rather than the number of predictors selected for each target.
+The parameter `q` represents the **maximum number of edges selected globally in each subsample**, rather than the number of predictors selected independently for each target.
 
-The procedure is repeated across multiple subsamples, and the stability of an edge is estimated by its selection frequency:
+The stability of an edge is estimated by its selection frequency:
 
-\[
-\hat{\pi}_{ij}
-=
-\frac{\text{number of subsamples where edge }(i,j)\text{ is selected}}
-{\text{total number of subsamples}}
-\]
+```text
+edge stability =
+number of subsamples in which the edge was selected
+---------------------------------------------------
+total number of subsamples
+```
 
-Edges with stability above a threshold \(\pi_{\text{thr}}\) are retained in the final graph.
+Edges whose selection frequency exceeds a stability threshold (`π_thr`) are retained in the final graph.
 
 ## Graph Interpretation
 
@@ -76,7 +76,7 @@ Edges with stability above a threshold \(\pi_{\text{thr}}\) are retained in the 
 - **Edges:** stable selected relationships
 - **Edge weights:** selection frequency or importance
 
-Directed relationships may also be explored, but their direction represents the **predictive procedure** and should not automatically be interpreted as causal.
+Directed relationships may also be explored. However, their direction represents the **predictive procedure** and should not automatically be interpreted as a causal relationship.
 
 ## Data
 
@@ -84,7 +84,8 @@ The analysis combines:
 
 - LD-imputed genetic data in PLINK `.raw` format;
 - SNP marker maps;
-- phenotypic and sociodemographic variables.
+- phenotypic variables;
+- sociodemographic covariates.
 
 The original genomic and phenotypic datasets are **not publicly distributed** due to privacy and research-data restrictions.
 
@@ -118,13 +119,19 @@ Genetica/
 
 **Research in progress.**
 
-Current work focuses on Random Forest-based graph estimation, permutation importance, stability selection, edge-ranking strategies, and high-dimensional genomic applications.
+Current work focuses on:
+
+- Random Forest-based graph estimation;
+- permutation importance;
+- edge-ranking strategies;
+- stability selection;
+- high-dimensional genomic applications.
 
 ## Funding
 
 This undergraduate research project is supported by the **Conselho Nacional de Desenvolvimento Científico e Tecnológico (CNPq)**.
 
-**CNPq Grant/Process No.:** 126658/2026-9
+**CNPq Process:** `126658/2026-9`
 
 Federal University of São Carlos — **UFSCar**
 

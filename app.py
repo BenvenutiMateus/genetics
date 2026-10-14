@@ -7,330 +7,143 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from src.utils.transformacoes import imp_to_adj
+from src.utils.estabilidade import (
+    carregar_metadata,
+    listar_iteracoes_disponiveis,
+    calcular_q,
+    calcular_limite_esperado_v,
+    calcular_matriz_estabilidade,
+    matriz_para_lista_arestas
+)
 
 
 # ============================================================
-# CONFIGURACAO
+# CONFIGURAÇÃO
 # ============================================================
 
-# ============================================================
-# CARREGAR ALVOS E VARIAVEIS
-# ============================================================
-
-@st.cache_data
-def carregar_dados(pasta_importancias):
-
-    if not os.path.exists(pasta_importancias):
-        return [], []
-
-    arquivos = [
-        f
-        for f in os.listdir(pasta_importancias)
-        if f.endswith(".csv")
-    ]
-
-    alvos = []
-    todas_colunas = set()
-
-    for arquivo in arquivos:
-
-        target = arquivo.replace(
-            ".csv",
-            ""
-        )
-
-        alvos.append(target)
-
-        caminho = os.path.join(
-            pasta_importancias,
-            arquivo
-        )
-
-        dados = pd.read_csv(
-            caminho
-        )
-
-        todas_colunas.update(
-            dados["variavel"].unique()
-        )
-
-    return (
-        sorted(alvos),
-        sorted(todas_colunas)
-    )
+st.set_page_config(
+    page_title="GRaFo — Stability Selection",
+    page_icon="🕸️",
+    layout="wide"
+)
 
 
 # ============================================================
-# CALCULAR MATRIZ DE ESTABILIDADE
+# FUNÇÕES COM CACHE
 # ============================================================
 
 @st.cache_data
-def calcular_matriz_estabilidade(
-    pasta_importancias,
-    p,
-    q,
-    iteracoes=None
+def carregar_info_experimento(
+    pasta
 ):
+    """
+    Carrega metadata e lista de iterações.
+    """
 
-    alvos, todas_colunas = carregar_dados(
-        pasta_importancias
+    metadata = carregar_metadata(
+        pasta
     )
 
-    if not alvos:
-        return pd.DataFrame()
-
-    matriz_estabilidade = pd.DataFrame(
-        0.0,
-        index=alvos,
-        columns=todas_colunas
-    )
-
-    for target in alvos:
-
-        arquivo = os.path.join(
-            pasta_importancias,
-            f"{target}.csv"
+    iteracoes = (
+        listar_iteracoes_disponiveis(
+            pasta
         )
-
-        if not os.path.exists(arquivo):
-            continue
-
-        dados = pd.read_csv(
-            arquivo
-        )
-
-        iteracoes_disponiveis = sorted(
-            dados["iteracao"].unique()
-        )
-
-        if iteracoes is not None:
-
-            iteracoes_disponiveis = (
-                iteracoes_disponiveis[:iteracoes]
-            )
-
-        n_usadas = 0
-
-        for i in iteracoes_disponiveis:
-
-            grupo = (
-                dados[
-                    dados["iteracao"] == i
-                ]
-                .set_index("variavel")[
-                    "importancia_bruta"
-                ]
-            )
-
-            # ==================================================
-            # ORDENAR IMPORTANCIAS
-            # ==================================================
-
-            grupo_ordenado = (
-                grupo.sort_values(
-                    ascending=False
-                )
-            )
-
-            # ==================================================
-            # NORMALIZAR
-            # ==================================================
-
-            soma_total = (
-                grupo_ordenado.sum()
-            )
-
-            if soma_total > 0:
-
-                importancias_normalizadas = (
-                    grupo_ordenado
-                    / soma_total
-                )
-
-            else:
-
-                importancias_normalizadas = (
-                    grupo_ordenado
-                )
-
-            # ==================================================
-            # SOMA CUMULATIVA
-            # ==================================================
-
-            soma_cumulativa = (
-                importancias_normalizadas
-                .cumsum()
-            )
-
-            # ==================================================
-            # CRITERIO p
-            #
-            # p = 0:
-            # nenhuma entra pelo critério p
-            # ==================================================
-
-            variaveis_selecionadas = (
-                soma_cumulativa[
-                    soma_cumulativa.shift(
-                        fill_value=0
-                    ) < p
-                ].index
-            )
-
-            # ==================================================
-            # CRITERIO q
-            #
-            # garante pelo menos q variáveis
-            # ==================================================
-
-            if len(
-                variaveis_selecionadas
-            ) < q:
-
-                variaveis_selecionadas = (
-                    grupo_ordenado
-                    .index[:q]
-                )
-
-            # ==================================================
-            # FREQUENCIA DE SELECAO
-            # ==================================================
-
-            matriz_estabilidade.loc[
-                target,
-                variaveis_selecionadas
-            ] += 1.0
-
-            n_usadas += 1
-
-        # ======================================================
-        # TRANSFORMA EM PROPORCAO
-        # ======================================================
-
-        if n_usadas > 0:
-
-            matriz_estabilidade.loc[
-                target
-            ] /= n_usadas
-
-    return matriz_estabilidade
-
-
-def calcular_limite_esperado_v(
-    q,
-    numero_variaveis,
-    limiar
-):
-    """Calcula o limite superior de E[V] para o critério somente q."""
-
-    if (
-        limiar <= 0.5
-        or numero_variaveis < 2
-    ):
-        return None
-
-    numero_arestas_possiveis = (
-        numero_variaveis
-        * (numero_variaveis - 1)
-        / 2
     )
 
     return (
-        q ** 2
-        / (
-            (2 * limiar - 1)
-            * numero_arestas_possiveis
-        )
+        metadata,
+        iteracoes
+    )
+
+
+@st.cache_data
+def calcular_estabilidade_cache(
+    pasta,
+    q,
+    ev,
+    pi_thr,
+    n_iteracoes
+):
+    """
+    Wrapper com cache para evitar recalcular a matriz
+    toda vez que algum componente visual é atualizado.
+    """
+
+    return calcular_matriz_estabilidade(
+        pasta=pasta,
+
+        q=q,
+
+        ev=ev,
+
+        pi_thr=pi_thr,
+
+        n_iteracoes=n_iteracoes,
+
+        mostrar_progresso=False
     )
 
 
 # ============================================================
-# GRAFO DIRECIONADO
+# GRAFO
 # ============================================================
 
-def criar_grafo_direcionado(
-    matriz,
-    pithr
+def criar_grafo(
+    matriz_estabilidade,
+    pi_thr
 ):
+    """
+    Cria o grafo NÃO DIRECIONADO do GRaFo.
 
-    G = nx.DiGraph()
+    Uma aresta i-j entra quando:
 
-    # Todos os nós possíveis
-    nos = set(
-        matriz.index
-    ).union(
-        set(matriz.columns)
+        estabilidade(i,j) >= pi_thr
+    """
+
+    G = nx.Graph()
+
+    nos = list(
+        matriz_estabilidade.index
     )
 
     G.add_nodes_from(
         nos
     )
 
-    # --------------------------------------------------------
-    # matriz.loc[target, variavel]
-    #
-    # significa:
-    #
-    # variavel ---> target
-    #
-    # --------------------------------------------------------
-
-    for target in matriz.index:
-
-        for variavel in matriz.columns:
-
-            # Evitar auto-laços
-            if target == variavel:
-                continue
-
-            peso = matriz.loc[
-                target,
-                variavel
-            ]
-
-            if (
-                pd.notna(peso)
-                and peso > pithr
-            ):
-
-                G.add_edge(
-                    variavel,
-                    target,
-                    weight=float(peso)
-                )
-
-    return G
-
-
-# ============================================================
-# GRAFO NAO DIRECIONADO
-# ============================================================
-
-def criar_grafo_nao_direcionado(
-    matriz,
-    pithr
-):
-
-    matriz_adj = imp_to_adj(
-        matriz
+    valores = (
+        matriz_estabilidade
+        .reindex(
+            index=nos,
+            columns=nos
+        )
+        .to_numpy()
     )
 
-    G = nx.from_pandas_adjacency(
-        matriz_adj,
-        create_using=nx.Graph
+    idx_i, idx_j = np.triu_indices(
+        len(nos),
+        k=1
     )
 
-    arestas_para_remover = [
-        (u, v)
-        for u, v, d
-        in G.edges(data=True)
-        if d["weight"] <= pithr
-    ]
+    for i, j in zip(
+        idx_i,
+        idx_j
+    ):
 
-    G.remove_edges_from(
-        arestas_para_remover
-    )
+        peso = valores[
+            i,
+            j
+        ]
+
+        if (
+            pd.notna(peso)
+            and peso >= pi_thr
+        ):
+
+            G.add_edge(
+                nos[i],
+                nos[j],
+                weight=float(peso)
+            )
 
     return G
 
@@ -340,29 +153,18 @@ def criar_grafo_nao_direcionado(
 # ============================================================
 
 def plotar_grafo(
-    matriz,
-    pithr,
-    manter_isolados=False,
-    direcionado=True
+    matriz_estabilidade,
+    pi_thr,
+    manter_isolados=False
 ):
+    """
+    Plota o grafo final de Stability Selection.
+    """
 
-    # ========================================================
-    # CRIAR O GRAFO
-    # ========================================================
-
-    if direcionado:
-
-        G = criar_grafo_direcionado(
-            matriz,
-            pithr
-        )
-
-    else:
-
-        G = criar_grafo_nao_direcionado(
-            matriz,
-            pithr
-        )
+    G = criar_grafo(
+        matriz_estabilidade,
+        pi_thr
+    )
 
     # ========================================================
     # REMOVER ISOLADOS
@@ -370,10 +172,12 @@ def plotar_grafo(
 
     if not manter_isolados:
 
+        isolados = list(
+            nx.isolates(G)
+        )
+
         G.remove_nodes_from(
-            list(
-                nx.isolates(G)
-            )
+            isolados
         )
 
     # ========================================================
@@ -394,7 +198,10 @@ def plotar_grafo(
         ax.text(
             0.5,
             0.5,
-            "Nenhuma conexão acima do pithr",
+            (
+                "Nenhuma conexão encontrada\n"
+                f"com πthr ≥ {pi_thr:.3f}"
+            ),
             ha="center",
             va="center",
             fontsize=16
@@ -404,10 +211,13 @@ def plotar_grafo(
             "off"
         )
 
-        return fig, G
+        return (
+            fig,
+            G
+        )
 
     # ========================================================
-    # POSICAO DOS NOS
+    # POSIÇÃO
     # ========================================================
 
     pos = nx.spring_layout(
@@ -422,46 +232,59 @@ def plotar_grafo(
     # PESOS
     # ========================================================
 
-    pesos = np.array(
+    pesos = np.asarray(
         [
-            d["weight"]
-            for _, _, d
+            dados["weight"]
+            for _, _, dados
             in G.edges(
                 data=True
             )
-        ]
+        ],
+        dtype=float
     )
 
     # ========================================================
-    # ESPESSURA DAS ARESTAS
+    # ESPESSURA
     # ========================================================
 
-    if (
-        len(pesos) > 0
-        and pesos.max() > 0
-    ):
+    if len(pesos) > 0:
 
-        espessuras = (
-            1
-            + 3
-            * (
-                pesos
-                / pesos.max()
+        minimo = pesos.min()
+        maximo = pesos.max()
+
+        if maximo > minimo:
+
+            espessuras = (
+                1
+                + 4
+                * (
+                    (pesos - minimo)
+                    /
+                    (maximo - minimo)
+                )
             )
-        )
+
+        else:
+
+            espessuras = (
+                np.full(
+                    len(pesos),
+                    3.0
+                )
+            )
 
     else:
 
         espessuras = 1
 
     # ========================================================
-    # NOS
+    # NÓS
     # ========================================================
 
     nx.draw_networkx_nodes(
         G,
         pos,
-        node_size=900,
+        node_size=1000,
         node_color="skyblue",
         edgecolors="black",
         linewidths=1,
@@ -472,37 +295,14 @@ def plotar_grafo(
     # ARESTAS
     # ========================================================
 
-    if direcionado:
-
-        nx.draw_networkx_edges(
-            G,
-            pos,
-            width=espessuras,
-            edge_color="gray",
-            alpha=0.7,
-
-            arrows=True,
-            arrowsize=22,
-            arrowstyle="-|>",
-
-            # curva ajuda bastante quando temos
-            # A -> B e B -> A
-            connectionstyle="arc3,rad=0.08",
-
-            node_size=900,
-            ax=ax
-        )
-
-    else:
-
-        nx.draw_networkx_edges(
-            G,
-            pos,
-            width=espessuras,
-            edge_color="gray",
-            alpha=0.7,
-            ax=ax
-        )
+    nx.draw_networkx_edges(
+        G,
+        pos,
+        width=espessuras,
+        edge_color="gray",
+        alpha=0.7,
+        ax=ax
+    )
 
     # ========================================================
     # LABELS
@@ -517,25 +317,38 @@ def plotar_grafo(
     )
 
     # ========================================================
-    # TITULO
+    # LABELS DAS ARESTAS
     # ========================================================
 
-    if direcionado:
+    labels_arestas = {
 
-        titulo = (
-            "Grafo Direcionado de Estabilidade\n"
-            f"Limiar > {pithr:.3f}"
+        (u, v):
+            f"{dados['weight']:.2f}"
+
+        for u, v, dados
+        in G.edges(
+            data=True
         )
+    }
 
-    else:
+    nx.draw_networkx_edge_labels(
+        G,
+        pos,
+        edge_labels=labels_arestas,
+        font_size=7,
+        ax=ax
+    )
 
-        titulo = (
-            "Grafo Não Direcionado de Estabilidade\n"
-            f"Limiar > {pithr:.3f}"
-        )
+    # ========================================================
+    # TÍTULO
+    # ========================================================
 
     ax.set_title(
-        titulo,
+        (
+            "Graphical Random Forests — "
+            "Stability Selection\n"
+            f"πthr = {pi_thr:.3f}"
+        ),
         fontsize=16
     )
 
@@ -545,99 +358,206 @@ def plotar_grafo(
 
     fig.tight_layout()
 
-    return fig, G
+    return (
+        fig,
+        G
+    )
 
 
 # ============================================================
-# STREAMLIT
+# CABEÇALHO
 # ============================================================
-
-st.set_page_config(
-    page_title=(
-        "Explorador de Estabilidade"
-    ),
-    page_icon="🕸️",
-    layout="wide"
-)
 
 st.title(
-    "🕸️ Explorador de Estabilidade"
+    "🕸️ Graphical Random Forests"
 )
 
 st.markdown(
-    "Explore a matriz de estabilidade utilizando "
-    "**q**, **p**, diferentes limiares e grafos "
-    "**direcionados ou não direcionados**."
+    r"""
+    Explorador da **Stability Selection** baseada em
+    Fellinghauer et al.
+
+    Para cada subsample:
+
+    1. são calculados os rankings locais das importâncias;
+    2. as duas direções de cada par são combinadas;
+    3. as arestas recebem um ranking global;
+    4. cada aresta recebe seu pior ranking, sendo $\max\{\text{rank}(i \to j), \text{rank}(j \to i)\}$
+    5. são selecionadas as **q melhores arestas**;
+    6. a frequência de seleção é calculada entre subsamples.
+    """
 )
 
 
 # ============================================================
-# SIDEBAR - FONTE DE DADOS
+# SIDEBAR
 # ============================================================
 
 st.sidebar.header(
-    "Fonte de Dados"
+    "Fonte de dados"
 )
 
 caminho_base = st.sidebar.text_input(
-    "Digite o caminho da pasta do experimento",
+    "Pasta do experimento",
     value="",
     placeholder=(
-        "Ex.: /dados/Importancias_2026-09-05_22-04-33"
-    )
-)
-
-
-pasta_importancias_selecionada = (
-    os.path.join(
-        caminho_base,
-        "importancias"
+        "Ex.: models/Importancias_2026-10-03_17-00-00"
     )
 )
 
 
 # ============================================================
-# VERIFICAR PASTA
+# VALIDAR PASTA
 # ============================================================
+
+if not caminho_base:
+
+    st.info(
+        "Informe a pasta do experimento na barra lateral."
+    )
+
+    st.stop()
+
 
 if not os.path.exists(
-    pasta_importancias_selecionada
+    caminho_base
 ):
 
     st.error(
-        f"A pasta "
-        f"'{pasta_importancias_selecionada}' "
-        f"não foi encontrada."
+        f"Pasta não encontrada:\n{caminho_base}"
     )
 
     st.stop()
 
 
-# ============================================================
-# DESCOBRIR NUMERO DE VARIAVEIS
-# ============================================================
-
-alvos, todas_colunas = carregar_dados(
-    pasta_importancias_selecionada
-)
-
-numero_nos = len(
-    todas_colunas
+pasta_importancias = os.path.join(
+    caminho_base,
+    "importancias"
 )
 
 
-if numero_nos == 0:
+if not os.path.exists(
+    pasta_importancias
+):
 
     st.error(
-        "Nenhuma variável foi encontrada "
-        "nos arquivos de importâncias."
+        "A pasta 'importancias' não foi encontrada."
     )
 
     st.stop()
 
 
 # ============================================================
-# METODO DE SELECAO
+# CARREGAR EXPERIMENTO
+# ============================================================
+
+try:
+
+    metadata, iteracoes_disponiveis = (
+        carregar_info_experimento(
+            caminho_base
+        )
+    )
+
+except Exception as erro:
+
+    st.error(
+        f"Erro ao carregar experimento:\n{erro}"
+    )
+
+    st.stop()
+
+
+# ============================================================
+# NÓS
+# ============================================================
+
+nos = [
+    str(no)
+    for no in metadata["alvos"]
+]
+
+numero_nos = len(
+    nos
+)
+
+numero_arestas = (
+    numero_nos
+    * (numero_nos - 1)
+    // 2
+)
+
+
+if numero_nos < 2:
+
+    st.error(
+        "São necessários pelo menos dois nós."
+    )
+
+    st.stop()
+
+
+if len(
+    iteracoes_disponiveis
+) == 0:
+
+    st.error(
+        "Nenhum arquivo iteracao_XXXX.parquet encontrado."
+    )
+
+    st.stop()
+
+
+# ============================================================
+# INFORMAÇÕES DO EXPERIMENTO
+# ============================================================
+
+st.sidebar.markdown(
+    "---"
+)
+
+st.sidebar.subheader(
+    "Experimento"
+)
+
+st.sidebar.write(
+    f"**Nós:** {numero_nos}"
+)
+
+st.sidebar.write(
+    f"**Arestas possíveis:** "
+    f"{numero_arestas}"
+)
+
+st.sidebar.write(
+    f"**Iterações disponíveis:** "
+    f"{len(iteracoes_disponiveis)}"
+)
+
+if "num_trees" in metadata:
+
+    st.sidebar.write(
+        f"**Árvores/RF:** "
+        f"{metadata['num_trees']}"
+    )
+
+if "n_permut" in metadata:
+
+    st.sidebar.write(
+        f"**Permutações:** "
+        f"{metadata['n_permut']}"
+    )
+
+if "fracao_amostra" in metadata:
+
+    st.sidebar.write(
+        f"**Fração da subsample:** "
+        f"{metadata['fracao_amostra']}"
+    )
+
+
+# ============================================================
+# NÚMERO DE ITERAÇÕES
 # ============================================================
 
 st.sidebar.markdown(
@@ -645,385 +565,184 @@ st.sidebar.markdown(
 )
 
 st.sidebar.header(
-    "Seleção das Variáveis"
+    "Stability Selection"
 )
 
-metodo_selecao = (
-    st.sidebar.selectbox(
-        "Critério",
-        options=[
-            "Somente q",
-            "Somente p",
-            "q + p"
-        ],
-        index=2
-    )
+max_iteracoes = len(
+    iteracoes_disponiveis
 )
 
-
-# ============================================================
-# PARAMETROS
-# ============================================================
-
-st.sidebar.markdown(
-    "---"
+valor_padrao_iteracoes = min(
+    100,
+    max_iteracoes
 )
 
-st.sidebar.header(
-    "Parâmetros"
+n_iteracoes = st.sidebar.number_input(
+    "Número de subsamples",
+    min_value=1,
+    max_value=max_iteracoes,
+    value=valor_padrao_iteracoes,
+    step=1
 )
 
 
 # ============================================================
-# SOMENTE q
+# π_thr
 # ============================================================
 
-if metodo_selecao == "Somente q":
-
-    q = st.sidebar.slider(
-        "q — número de variáveis",
-        min_value=1,
-        max_value=numero_nos,
-        value=min(
-            3,
-            numero_nos
-        ),
-        step=1
-    )
-
-    # p = 0 desliga o p
-    p = 0.0
+pi_thr = st.sidebar.number_input(
+    "πthr — limiar de estabilidade",
+    min_value=0.501,
+    max_value=0.999,
+    value=0.750,
+    step=0.001,
+    format="%.3f"
+)
 
 
 # ============================================================
-# SOMENTE p
+# MODO DE ESCOLHA DE q
 # ============================================================
 
-elif metodo_selecao == "Somente p":
+modo_q = st.sidebar.selectbox(
+    "Como definir q?",
+    options=[
+        "A partir de E[V]",
+        "Definir q manualmente"
+    ],
+    index=0
+)
 
-    p = st.sidebar.number_input(
-        "p — proporção acumulada",
-        min_value=0.001,
-        max_value=1.000,
-        value=0.985,
-        step=0.001,
-        format="%.3f"
+
+# ============================================================
+# q A PARTIR DE E[V]
+# ============================================================
+
+if modo_q == "A partir de E[V]":
+
+    ev = st.sidebar.number_input(
+        "E[V] desejado",
+        min_value=0.0,
+        value=1.0,
+        step=0.1,
+        format="%.2f"
     )
 
-    # q = 1 deixa o p dominar
-    q = 1
+    q = calcular_q(
+        n_nodes=numero_nos,
+        ev=ev,
+        pi_thr=pi_thr
+    )
+
+    st.sidebar.success(
+        f"q calculado = {q}"
+    )
+
+    q_funcao = None
 
 
 # ============================================================
-# q + p
+# q MANUAL
 # ============================================================
 
 else:
 
-    q = st.sidebar.slider(
-        "q — mínimo de variáveis",
+    q = st.sidebar.number_input(
+        "q — número de arestas por subsample",
         min_value=1,
-        max_value=numero_nos,
+        max_value=numero_arestas,
         value=min(
-            3,
-            numero_nos
+            10,
+            numero_arestas
         ),
         step=1
     )
 
-    p = st.sidebar.number_input(
-        "p — proporção acumulada",
-        min_value=0.001,
-        max_value=1.000,
-        value=0.985,
-        step=0.001,
-        format="%.3f"
+    q = int(q)
+
+    ev = calcular_limite_esperado_v(
+        q=q,
+        n_nodes=numero_nos,
+        pi_thr=pi_thr
+    )
+
+    q_funcao = q
+
+    st.sidebar.caption(
+        f"Com esse q, o limite é "
+        f"E[V] ≤ {ev:.4f}"
     )
 
 
 # ============================================================
-# LIMIAR
-# ============================================================
-
-pithr = (
-    st.sidebar.slider(
-        "pithr — limiar do grafo",
-        min_value=0.000,
-        max_value=1.000,
-        value=0.900,
-        step=0.001,
-        format="%.3f"
-    )
-)
-
-
-# ============================================================
-# TIPO DE GRAFO
+# NÓS ISOLADOS
 # ============================================================
 
 st.sidebar.markdown(
     "---"
 )
-
-st.sidebar.header(
-    "Grafo"
-)
-
-tipo_grafo = (
-    st.sidebar.selectbox(
-        "Tipo de grafo",
-        options=[
-            "Direcionado",
-            "Não direcionado"
-        ],
-        index=0
-    )
-)
-
-
-# ============================================================
-# NOS ISOLADOS
-# ============================================================
 
 manter_isolados = (
     st.sidebar.checkbox(
-        "Manter nós isolados?"
+        "Manter nós isolados?",
+        value=False
     )
 )
 
 
 # ============================================================
-# INFORMACOES DO EXPERIMENTO
+# CALCULAR
 # ============================================================
 
-st.sidebar.markdown(
-    "---"
-)
+inicio = time.perf_counter()
 
-st.sidebar.caption(
-    "Informações do experimento"
-)
+try:
 
-st.sidebar.write(
-    f"**Número de variáveis:** "
-    f"{numero_nos}"
-)
+    (
+        matriz_estabilidade,
+        matriz_adjacencia,
+        q_utilizado,
+        info
+    ) = calcular_estabilidade_cache(
 
-st.sidebar.write(
-    f"**Número de alvos:** "
-    f"{len(alvos)}"
+        pasta=caminho_base,
+
+        q=q_funcao,
+
+        ev=ev,
+
+        pi_thr=pi_thr,
+
+        n_iteracoes=int(
+            n_iteracoes
+        )
+    )
+
+except Exception as erro:
+
+    st.error(
+        f"Erro ao calcular Stability Selection:\n\n{erro}"
+    )
+
+    st.stop()
+
+
+tempo = (
+    time.perf_counter()
+    - inicio
 )
 
 
 # ============================================================
-# CONFIGURACAO ATUAL
+# CONFIGURAÇÃO
 # ============================================================
 
 st.subheader(
     "⚙️ Configuração"
 )
 
-
-if metodo_selecao == "Somente q":
-
-    c1, c2, c3, c4, c5 = (
-        st.columns(5)
-    )
-
-    with c1:
-
-        st.metric(
-            "Método",
-            "Somente q"
-        )
-
-    with c2:
-
-        st.metric(
-            "q",
-            q
-        )
-
-    with c3:
-
-        st.metric(
-            "pithr",
-            f"{pithr:.3f}"
-        )
-
-    with c4:
-
-        limite_ev = calcular_limite_esperado_v(
-            q=q,
-            numero_variaveis=numero_nos,
-            limiar=pithr
-        )
-
-        st.metric(
-            "E[V]",
-            (
-                f"{limite_ev:.4f}"
-                if limite_ev is not None
-                else "N/A"
-            ),
-            help=(
-                "Limite superior de E[V] pela fórmula "
-                "q² / ((2·pithr − 1) · n·(n−1)/2). "
-                "A fórmula exige pithr > 0,5."
-            )
-        )
-
-    with c5:
-
-        st.metric(
-            "Grafo",
-            tipo_grafo
-        )
-
-
-elif metodo_selecao == "Somente p":
-
-    c1, c2, c3, c4 = (
-        st.columns(4)
-    )
-
-    with c1:
-
-        st.metric(
-            "Método",
-            "Somente p"
-        )
-
-    with c2:
-
-        st.metric(
-            "p",
-            f"{p:.3f}"
-        )
-
-    with c3:
-
-        st.metric(
-            "pithr",
-            f"{pithr:.3f}"
-        )
-
-    with c4:
-
-        st.metric(
-            "Grafo",
-            tipo_grafo
-        )
-
-
-else:
-
-    c1, c2, c3, c4, c5 = (
-        st.columns(5)
-    )
-
-    with c1:
-
-        st.metric(
-            "Método",
-            "q + p"
-        )
-
-    with c2:
-
-        st.metric(
-            "q",
-            q
-        )
-
-    with c3:
-
-        st.metric(
-            "p",
-            f"{p:.3f}"
-        )
-
-    with c4:
-
-        st.metric(
-            "pithr",
-            f"{pithr:.3f}"
-        )
-
-    with c5:
-
-        st.metric(
-            "Grafo",
-            tipo_grafo
-        )
-
-
-# ============================================================
-# CALCULAR MATRIZ
-# ============================================================
-
-with st.spinner(
-    "Calculando matriz de estabilidade..."
-):
-
-    inicio = (
-        time.perf_counter()
-    )
-
-    matriz_estabilidade = (
-        calcular_matriz_estabilidade(
-            pasta_importancias=(
-                pasta_importancias_selecionada
-            ),
-            p=p,
-            q=q
-        )
-    )
-
-    tempo = (
-        time.perf_counter()
-        - inicio
-    )
-
-
-st.caption(
-    f"Matriz calculada em "
-    f"{tempo:.3f} segundos"
-)
-
-
-# ============================================================
-# GRAFO
-# ============================================================
-
-direcionado = (
-    tipo_grafo
-    == "Direcionado"
-)
-
-fig, G = plotar_grafo(
-    matriz=matriz_estabilidade,
-    pithr=pithr,
-    manter_isolados=manter_isolados,
-    direcionado=direcionado
-)
-
-st.pyplot(
-    fig,
-    use_container_width=True
-)
-
-
-# ============================================================
-# ESTATISTICAS DO GRAFO
-# ============================================================
-
-st.subheader(
-    "📊 Informações do grafo"
-)
-
-c1, c2, c3 = (
-    st.columns(3)
+c1, c2, c3, c4, c5 = (
+    st.columns(5)
 )
 
 
@@ -1031,6 +750,102 @@ with c1:
 
     st.metric(
         "Nós",
+        numero_nos
+    )
+
+
+with c2:
+
+    st.metric(
+        "Subsamples",
+        info[
+            "iteracoes_utilizadas"
+        ]
+    )
+
+
+with c3:
+
+    st.metric(
+        "q",
+        q_utilizado
+    )
+
+
+with c4:
+
+    st.metric(
+        "πthr",
+        f"{pi_thr:.3f}"
+    )
+
+
+with c5:
+
+    st.metric(
+        "E[V] limite",
+        f"{info['ev_limite']:.4f}"
+    )
+
+
+st.caption(
+    f"Cálculo concluído em {tempo:.3f} segundos."
+)
+
+
+# ============================================================
+# EXPLICAÇÃO DE q
+# ============================================================
+
+if modo_q == "A partir de E[V]":
+
+    st.info(
+        (
+            f"Com E[V] = {ev:.2f} e "
+            f"πthr = {pi_thr:.3f}, "
+            f"o número de arestas selecionadas "
+            f"por subsample é q = {q_utilizado}."
+        )
+    )
+
+
+# ============================================================
+# GRAFO
+# ============================================================
+
+fig, G = plotar_grafo(
+    matriz_estabilidade=matriz_estabilidade,
+    pi_thr=pi_thr,
+    manter_isolados=manter_isolados
+)
+
+st.pyplot(
+    fig,
+    use_container_width=True
+)
+
+plt.close(
+    fig
+)
+
+
+# ============================================================
+# ESTATÍSTICAS DO GRAFO
+# ============================================================
+
+st.subheader(
+    "📊 Informações do grafo"
+)
+
+c1, c2, c3, c4 = (
+    st.columns(4)
+)
+
+
+with c1:
+
+    st.metric(
+        "Nós exibidos",
         G.number_of_nodes()
     )
 
@@ -1038,7 +853,7 @@ with c1:
 with c2:
 
     st.metric(
-        "Arestas",
+        "Arestas estáveis",
         G.number_of_edges()
     )
 
@@ -1047,7 +862,7 @@ with c3:
 
     densidade = (
         nx.density(G)
-        if G.number_of_nodes() > 0
+        if G.number_of_nodes() > 1
         else 0
     )
 
@@ -1057,57 +872,59 @@ with c3:
     )
 
 
+with c4:
+
+    grau_medio = (
+        sum(
+            dict(
+                G.degree()
+            ).values()
+        )
+        / G.number_of_nodes()
+        if G.number_of_nodes() > 0
+        else 0
+    )
+
+    st.metric(
+        "Grau médio",
+        f"{grau_medio:.2f}"
+    )
+
+
 # ============================================================
-# INFORMACOES ESPECIFICAS DO GRAFO DIRECIONADO
+# ARESTAS ESTÁVEIS
 # ============================================================
 
-if direcionado and G.number_of_nodes() > 0:
-
-    st.subheader(
-        "➡️ Informações direcionais"
+arestas_estaveis = (
+    matriz_para_lista_arestas(
+        matriz_estabilidade,
+        pi_thr=pi_thr
     )
+)
 
-    c1, c2 = (
-        st.columns(2)
-    )
 
-    graus_saida = dict(
-        G.out_degree()
-    )
+with st.expander(
+    "🔗 Ver arestas estáveis",
+    expanded=True
+):
 
-    graus_entrada = dict(
-        G.in_degree()
-    )
+    if arestas_estaveis.empty:
 
-    with c1:
+        st.info(
+            "Nenhuma aresta ultrapassou o limiar."
+        )
 
-        if graus_saida:
+    else:
 
-            maior_saida = max(
-                graus_saida,
-                key=graus_saida.get
-            )
-
-            st.metric(
-                "Maior grau de saída",
-                f"{maior_saida}: "
-                f"{graus_saida[maior_saida]}"
-            )
-
-    with c2:
-
-        if graus_entrada:
-
-            maior_entrada = max(
-                graus_entrada,
-                key=graus_entrada.get
-            )
-
-            st.metric(
-                "Maior grau de entrada",
-                f"{maior_entrada}: "
-                f"{graus_entrada[maior_entrada]}"
-            )
+        st.dataframe(
+            arestas_estaveis.style.format(
+                {
+                    "estabilidade":
+                        "{:.3f}"
+                }
+            ),
+            use_container_width=True
+        )
 
 
 # ============================================================
@@ -1115,7 +932,7 @@ if direcionado and G.number_of_nodes() > 0:
 # ============================================================
 
 with st.expander(
-    "Ver matriz de estabilidade"
+    "📊 Ver matriz de estabilidade"
 ):
 
     st.dataframe(
@@ -1129,58 +946,109 @@ with st.expander(
 
 
 # ============================================================
-# LISTA DE ARESTAS
+# MATRIZ DE ADJACÊNCIA
 # ============================================================
 
 with st.expander(
-    "Ver arestas do grafo"
+    "🔢 Ver matriz de adjacência"
 ):
 
-    if G.number_of_edges() == 0:
+    st.dataframe(
+        matriz_adjacencia,
+        use_container_width=True
+    )
 
-        st.info(
-            "Nenhuma aresta encontrada "
-            "com o limiar atual."
+
+# ============================================================
+# TODAS AS ARESTAS
+# ============================================================
+
+with st.expander(
+    "Ver frequência de todas as arestas"
+):
+
+    todas_arestas = (
+        matriz_para_lista_arestas(
+            matriz_estabilidade,
+            pi_thr=0.0
         )
+    )
 
-    else:
+    st.dataframe(
+        todas_arestas.style.format(
+            {
+                "estabilidade":
+                    "{:.3f}"
+            }
+        ),
+        use_container_width=True
+    )
 
-        arestas = []
 
-        for origem, destino, dados_aresta in G.edges(
-            data=True
-        ):
+# ============================================================
+# DOWNLOADS
+# ============================================================
 
-            arestas.append(
-                {
-                    "origem": origem,
-                    "destino": destino,
-                    "peso": dados_aresta[
-                        "weight"
-                    ]
-                }
-            )
+st.subheader(
+    "💾 Exportar"
+)
 
-        df_arestas = pd.DataFrame(
-            arestas
+c1, c2, c3 = (
+    st.columns(3)
+)
+
+
+with c1:
+
+    csv_estabilidade = (
+        matriz_estabilidade
+        .to_csv()
+        .encode(
+            "utf-8"
         )
+    )
 
-        df_arestas = (
-            df_arestas
-            .sort_values(
-                "peso",
-                ascending=False
-            )
-            .reset_index(
-                drop=True
-            )
-        )
+    st.download_button(
+        label="Baixar matriz de estabilidade",
+        data=csv_estabilidade,
+        file_name="matriz_estabilidade.csv",
+        mime="text/csv"
+    )
 
-        st.dataframe(
-            df_arestas.style.format(
-                {
-                    "peso": "{:.3f}"
-                }
-            ),
-            use_container_width=True
+
+with c2:
+
+    csv_adjacencia = (
+        matriz_adjacencia
+        .to_csv()
+        .encode(
+            "utf-8"
         )
+    )
+
+    st.download_button(
+        label="Baixar matriz de adjacência",
+        data=csv_adjacencia,
+        file_name="matriz_adjacencia.csv",
+        mime="text/csv"
+    )
+
+
+with c3:
+
+    csv_arestas = (
+        arestas_estaveis
+        .to_csv(
+            index=False
+        )
+        .encode(
+            "utf-8"
+        )
+    )
+
+    st.download_button(
+        label="Baixar arestas estáveis",
+        data=csv_arestas,
+        file_name="arestas_estaveis.csv",
+        mime="text/csv"
+    )

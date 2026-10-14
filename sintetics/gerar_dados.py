@@ -28,5 +28,6 @@ df["razao_x3_x4"] = df["x3"] / df["x4"]
 
 df["exp_soma_x4_x5"] = np.exp(df["x4"] + df["x5"])
 df["log_soma_x0_x3"] = np.log(df["x0"] + df["x3"])
+df["x5_maior_0.2"] = df["x5"] > .2
 
 df.to_csv("sintetics/dados_sinteticos.csv", index=False)

@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.14"
 resolution-markers = [
     "sys_platform == 'win32'",
@@ -556,6 +556,11 @@ dependencies = [
     { name = "streamlit" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "jupyterlab" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "jlab-enhanced-cell-toolbar", specifier = ">=3.5.1" },
@@ -573,6 +578,9 @@ requires-dist = [
     { name = "seaborn", specifier = ">=0.13.2" },
     { name = "streamlit", specifier = ">=1.63.0" },
 ]
+
+[package.metadata.requires-dev]
+dev = [{ name = "jupyterlab", specifier = ">=4.5.7" }]
 
 [[package]]
 name = "idna"

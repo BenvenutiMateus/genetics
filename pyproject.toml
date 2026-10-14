@@ -20,3 +20,8 @@ dependencies = [
     "seaborn>=0.13.2",
     "streamlit>=1.63.0",
 ]
+
+[dependency-groups]
+dev = [
+    "jupyterlab>=4.5.7",
+]

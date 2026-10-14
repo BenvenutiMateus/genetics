@@ -1,7 +1,9 @@
 {
+  "formato": "matriz_por_iteracao",
+  "convencao_matriz": "linha=target; coluna=preditor; celula=importancia(preditor->target)",
   "num_trees": 500,
-  "iteracoes": 50,
   "fracao_amostra": 0.5,
+  "n_permut": 5,
   "alvos": [
     "x0",
     "x1",
@@ -21,31 +23,16 @@
     "soma_x0_x1_x2",
     "razao_x3_x4",
     "exp_soma_x4_x5",
-    "log_soma_x0_x3"
-  ],
-  "colunas_df": [
-    "x0",
-    "x1",
-    "x2",
-    "x3",
-    "x4",
-    "x5",
-    "x6",
-    "log_x0",
-    "log_x1",
-    "quadratico_x1",
-    "quadratico_x2",
-    "cubico_x2",
-    "cubico_x3",
-    "exp_x3",
-    "exp_x4",
-    "soma_x0_x1_x2",
-    "razao_x3_x4",
-    "exp_soma_x4_x5",
-    "log_soma_x0_x3"
+    "log_soma_x0_x3",
+    "x5_maior_0.2"
   ],
   "n_linhas_df": 1000,
-  "inicio": "2026-09-20T22:46:27.975665",
-  "fim": "2026-09-20T23:03:28.849186",
-  "numero_permutacao": 5
+  "max_categorias": 5,
+  "colunas_categoricas": [
+    "x5_maior_0.2"
+  ],
+  "inicio": "2026-10-03T19:10:43.297818",
+  "iteracoes_solicitadas": 100,
+  "ultima_atualizacao": "2026-10-03T20:05:02.715758",
+  "iteracoes_concluidas": 100
 }

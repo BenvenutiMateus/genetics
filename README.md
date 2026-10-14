@@ -135,6 +135,13 @@ This undergraduate research project is supported by the **Conselho Nacional de D
 
 Federal University of São Carlos — **UFSCar**
 
+## Funding
+
+This undergraduate research project is supported by the **Conselho Nacional de Desenvolvimento Científico e Tecnológico (CNPq)**.
+
+**CNPq Process:** `126658/2026-9`
+
+Federal University of São Carlos — **UFSCar**
 ## Contact
 
 [benvenutimateus.github.io/contact.html](https://benvenutimateus.github.io/contact.html)

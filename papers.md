@@ -14,6 +14,21 @@ Papers about building graphs from data and figuring out which variables are conn
   [Paper](https://arxiv.org/abs/1109.0152) · [PDF](https://arxiv.org/pdf/1109.0152)  
   The main paper for my IC. Uses Random Forests + stability selection to build graphs. I want to understand the edge-selection steps and compare them with my implementation.
 
+**My notes:**
+- **Main idea:** Uses Random Forests to estimate relationships between variables and stability selection to build an undirected graph. Each variable is predicted using the others, and permutation importance helps rank possible connections.
+
+- **What I found interesting:**
+  - Uses the worse (more conservative) ranking between the two directions of an edge.
+  - Selects the top `q` edges globally, rather than `q` variables per target.
+  - Uses 100 subsamples containing half of the observations.
+  - Sets `pi_thr = 0.75` and relates `q` to the expected number of false positives `E[V]`.
+
+- **Could I use this in my IC?**
+  - This is the main reference for my current implementation.
+  - Compare the original fixed `q` approach with my cumulative importance threshold `p`.
+  - Investigate how correlated SNPs affect variable importance and graph estimation.
+  - Test the method on simulated datasets with known connections.
+
 - [ ] **Meinshausen & Bühlmann (2006) — High-Dimensional Graphs and Variable Selection with the Lasso**  
   [Paper](https://arxiv.org/abs/math/0608017) · [PDF](https://arxiv.org/pdf/math/0608017)  
   Builds graphs using LASSO instead of Random Forests. Could be a good alternative method to test.
@@ -46,7 +61,28 @@ How to pick variables or edges that show up consistently across different sample
   [Paper](https://arxiv.org/abs/1006.3316) · [PDF](https://arxiv.org/pdf/1006.3316)  
   Uses graph stability to choose a tuning parameter. Not the same as classical stability selection, but related.
 
-## 3. Feature Selection & Variable Importance
+## 3. Knockoff Selection
+
+Papers about selecting variables using artificial copies
+(knockoffs) to control false discoveries.
+
+- [ ] **Barber & Candès (2015) — Controlling the False Discovery Rate via Knockoffs**  
+  [Paper](https://arxiv.org/abs/1404.5609)  
+  Introduces the original knockoff filter for variable selection.
+  Important for understanding how knockoffs work and how they control FDR.
+
+- [ ] **Candès et al. (2018) — Panning for Gold: Model-X Knockoffs for High Dimensional Controlled Variable Selection**  
+  [Paper](https://doi.org/10.1111/rssb.12265)  
+  Extends knockoffs to more general settings, including nonlinear relationships.
+  Interesting because it can be combined with Random Forests.
+
+- [ ] **Sesia, Sabatti & Candès (2019) — Gene Hunting with Hidden Markov Model Knockoffs**  
+  [Paper](https://doi.org/10.1093/biomet/asy033)  
+  Applies knockoffs to genetic association studies.
+  Very relevant for dealing with correlated SNPs and linkage disequilibrium (LD).
+
+
+## 4. Feature Selection & Variable Importance
 
 Mostly about how to choose variables and how much to trust Random Forest importance scores.
 
@@ -70,7 +106,7 @@ Mostly about how to choose variables and how much to trust Random Forest importa
   [Paper](https://doi.org/10.1186/1471-2105-11-110)  
   Another important paper for correlated SNPs. Compares how different importance measures behave when predictors are related.
 
-## 4. Inference for Graphs
+## 5. Inference for Graphs
 
 Finding connections is one thing. Deciding how much confidence we should put in those connections is another.
 
@@ -86,7 +122,7 @@ Finding connections is one thing. Deciding how much confidence we should put in 
   [Paper](https://doi.org/10.1111/rssb.12265)  
   A different way to select variables while controlling false discoveries. Could be an alternative to look into later.
 
-## 5. Genetics & SNPs
+## 6. Genetics & SNPs
 
 A few papers that are closer to the actual genetic data I'm working with.
 
@@ -98,7 +134,7 @@ A few papers that are closer to the actual genetic data I'm working with.
   [Paper](https://doi.org/10.1093/biomet/asy033)  
   Uses knockoffs for genetic association studies. Interesting for dealing with dependence between SNPs.
 
-## 6. Graph Evaluation
+## 7. Graph Evaluation
 
 How to check whether the graphs are actually useful, beyond just looking nice.
 
@@ -110,7 +146,6 @@ How to check whether the graphs are actually useful, beyond just looking nice.
 
 ## What I want to look into next
 
-- **Negative importances:** ignore them, keep only positive ones, or use absolute values? What changes in the final graph?
 - **Selecting variables:** fixed `q` or cumulative importance threshold `p`?
 - **Correlated SNPs:** how much does LD change the ranking?
 - **Stability selection:** how to choose `q`, `pi_thr`, and the number of subsamples?
@@ -120,12 +155,11 @@ How to check whether the graphs are actually useful, beyond just looking nice.
 
 ## Reading order (for now)
 
-1. Fellinghauer et al. (2013) — understand the original method well.
-2. Meinshausen & Bühlmann (2010) — get the stability selection theory right.
-3. Strobl et al. (2008) and Nicodemus et al. (2010) — look into correlated predictors.
-4. Altmann et al. (2010) — study importance scores and their interpretation.
-5. Meng et al. (2009) — connect all of this to SNPs and LD.
-6. Meinshausen & Bühlmann (2006) — explore LASSO as another option.
+1. Meinshausen & Bühlmann (2010) — get the stability selection theory right.
+2. Strobl et al. (2008) and Nicodemus et al. (2010) — look into correlated predictors.
+3. Altmann et al. (2010) — study importance scores and their interpretation.
+4. Meng et al. (2009) — connect all of this to SNPs and LD.
+5. Meinshausen & Bühlmann (2006) — explore LASSO as another option.
 
 ## Notes
 

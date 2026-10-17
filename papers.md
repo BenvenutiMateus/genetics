@@ -41,9 +41,6 @@ Papers about building graphs from data and figuring out which variables are conn
   [Paper](https://doi.org/10.1371/journal.pone.0012776)  
   Introduces GENIE3, a tree-based method for gene networks. Interesting because it works with *directed* connections.
 
-- [ ] **Haslbeck & Waldorp (2020) — mgm: Estimating Time-Varying Mixed Graphical Models in High-Dimensional Data**  
-  [Paper](https://doi.org/10.18637/jss.v093.i08)  
-  Graphs with different types of variables. Might help when working with SNPs, phenotypes, and other covariates together.
 
 ## 2. Stability Selection
 
@@ -53,33 +50,12 @@ How to pick variables or edges that show up consistently across different sample
   [Paper](https://arxiv.org/abs/0809.2932) · [PDF](https://arxiv.org/pdf/0809.2932)  
   The key reference for stability selection. Especially important for understanding `q`, selection frequencies, and false positives.
 
-- [ ] **Shah & Samworth (2013) — Variable Selection with Error Control: Another Look at Stability Selection**  
-  [Paper](https://arxiv.org/abs/1105.5578) · [PDF](https://arxiv.org/pdf/1105.5578)  
-  Looks at a different way of making subsamples (complementary pairs). Worth checking against my current approach.
-
-- [ ] **Liu, Roeder & Wasserman (2010) — Stability Approach to Regularization Selection (StARS) for High Dimensional Graphical Models**  
-  [Paper](https://arxiv.org/abs/1006.3316) · [PDF](https://arxiv.org/pdf/1006.3316)  
-  Uses graph stability to choose a tuning parameter. Not the same as classical stability selection, but related.
-
 ## 3. Knockoff Selection
 
 Papers about selecting variables using artificial copies
 (knockoffs) to control false discoveries.
 
-- [ ] **Barber & Candès (2015) — Controlling the False Discovery Rate via Knockoffs**  
-  [Paper](https://arxiv.org/abs/1404.5609)  
-  Introduces the original knockoff filter for variable selection.
-  Important for understanding how knockoffs work and how they control FDR.
-
-- [ ] **Candès et al. (2018) — Panning for Gold: Model-X Knockoffs for High Dimensional Controlled Variable Selection**  
-  [Paper](https://doi.org/10.1111/rssb.12265)  
-  Extends knockoffs to more general settings, including nonlinear relationships.
-  Interesting because it can be combined with Random Forests.
-
-- [ ] **Sesia, Sabatti & Candès (2019) — Gene Hunting with Hidden Markov Model Knockoffs**  
-  [Paper](https://doi.org/10.1093/biomet/asy033)  
-  Applies knockoffs to genetic association studies.
-  Very relevant for dealing with correlated SNPs and linkage disequilibrium (LD).
+- I still have to search some papers
 
 
 ## 4. Feature Selection & Variable Importance
@@ -97,14 +73,6 @@ Mostly about how to choose variables and how much to trust Random Forest importa
 - [ ] **Altmann et al. (2010) — Permutation Importance: A Corrected Feature Importance Measure**  
   [Paper](https://doi.org/10.1093/bioinformatics/btq134)  
   Interesting for studying variable importance more carefully. It uses permutations of the *response* to assess significance — different from the usual scikit-learn permutation importance.
-
-- [ ] **Nembrini, König & Wright (2018) — The Revival of the Gini Importance?**  
-  [Paper](https://doi.org/10.1093/bioinformatics/bty373)  
-  A corrected version of impurity-based importance. Might be useful when permutation importance becomes too expensive.
-
-- [ ] **Nicodemus et al. (2010) — The Behaviour of Random Forest Permutation-Based Variable Importance Measures under Predictor Correlation**  
-  [Paper](https://doi.org/10.1186/1471-2105-11-110)  
-  Another important paper for correlated SNPs. Compares how different importance measures behave when predictors are related.
 
 ## 5. Inference for Graphs
 
@@ -138,10 +106,7 @@ A few papers that are closer to the actual genetic data I'm working with.
 
 How to check whether the graphs are actually useful, beyond just looking nice.
 
-- [ ] **Marbach et al. (2012) — Wisdom of Crowds for Robust Gene Network Inference**  
-  [Paper](https://doi.org/10.1038/nmeth.2016)  
-  Compares ways of predicting biological networks. Good inspiration for evaluating and comparing graph methods.
-
+- **I still have to search about it**
 ---
 
 ## What I want to look into next

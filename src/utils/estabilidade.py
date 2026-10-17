@@ -87,9 +87,6 @@ def calcular_q(
                 * p(p-1)/2
             )
         )
-
-    IMPORTANTE:
-    O artigo usa CEIL, e não FLOOR.
     """
 
     if not 0.5 < pi_thr < 1:
@@ -109,7 +106,7 @@ def calcular_q(
     )
 
     q = int(
-        np.ceil(
+        np.floor(
             np.sqrt(
                 (2 * pi_thr - 1)
                 * ev
@@ -393,9 +390,6 @@ def calcular_ranking_arestas(
             rank(A -> B)
         )
 
-    pois rank maior = pior.
-
-
     ----------------------------------------------------------
     3. Ordenação global
     ----------------------------------------------------------
@@ -413,13 +407,22 @@ def calcular_ranking_arestas(
     # ========================================================
     # RANK LOCAL
     # ========================================================
+    matriz_limpa = matriz.to_numpy(dtype=float, copy=True)
 
-    ranks_locais = matriz.rank(
+    np.fill_diagonal(matriz_limpa, np.nan)
+
+    df_limpo = pd.DataFrame(
+        matriz_limpa,
+        index=nos,
+        columns=nos
+    )
+
+    ranks_locais = df_limpo.rank(
         axis=1,
         ascending=False,
         method="average",
         na_option="keep"
-    )
+    ).to_numpy(dtype=float)
 
     # ========================================================
     # ÍNDICES DA PARTE SUPERIOR DA MATRIZ
@@ -462,10 +465,6 @@ def calcular_ranking_arestas(
         rank_j_para_i,
         rank_i_para_j
     )
-    rank_melhor_direcao = np.maximum(
-        rank_j_para_i,
-        rank_i_para_j
-    )
 
     nomes = np.asarray(
         nos,
@@ -487,55 +486,29 @@ def calcular_ranking_arestas(
             rank_i_para_j,
 
         "rank_aresta":
-            rank_aresta,
-
-        "rank_melhor_direcao":
-            rank_melhor_direcao
-    })
+            rank_aresta
+    }).dropna(subset=["rank_aresta"])
 
     # --------------------------------------------------------
     # Se por algum motivo existir NA em alguma direção,
     # a aresta não pode ser ranqueada corretamente.
     # --------------------------------------------------------
 
-    arestas = (
-        arestas
-        .dropna(
-            subset=[
-                "rank_aresta"
-            ]
-        )
-        .sort_values(
-            by=[
-                "rank_aresta",
-                "rank_melhor_direcao",
-                "no_1",
-                "no_2"
-            ],
-            ascending=[
-                True,
-                True,
-                True,
-                True
-            ]
-        )
-        .reset_index(
-            drop=True
-        )
+    arestas["rank_global"] = arestas["rank_aresta"].rank(
+        ascending=True,
+        method="average"
     )
 
-    # --------------------------------------------------------
-    # Ranking global efetivo após desempates
-    # --------------------------------------------------------
-
-    arestas["ordem_global"] = (
-        np.arange(
-            1,
-            len(arestas) + 1
-        )
+    # Posição máxima do bloco empatado (garante nunca ultrapassar q)
+    arestas["rank_max"] = arestas["rank_aresta"].rank(
+        ascending=True,
+        method="max"
     )
 
-    return arestas
+    return arestas.sort_values(
+        by=["rank_global", "no_1", "no_2"]
+    ).reset_index(drop=True)
+
 
 
 # ============================================================
@@ -547,28 +520,24 @@ def selecionar_top_q(
     q
 ):
     """
-    Seleciona exatamente as q primeiras arestas do ranking
-    global.
+    Seleciona as arestas com rank_global <= q.
+    Pela definição de rank médio (average), se houver empate atravessando
+    a fronteira q (ex: 11ª e 12ª empatadas com rank_global = 11.5 para q = 11),
+    ambas terão rank_global > q e serão automaticamente descartadas,
+    restando apenas as 10 primeiras (exatamente como na pág. 6 de Fellinghauer).
     """
-
     if q < 0:
-
-        raise ValueError(
-            "q não pode ser negativo."
-        )
+        raise ValueError("q não pode ser negativo.")
 
     if q > len(arestas):
-
         raise ValueError(
-            f"q={q} é maior que o número de arestas "
-            f"ranqueáveis ({len(arestas)})."
+            f"q={q} é maior que o número de arestas ranqueáveis ({len(arestas)})."
         )
 
-    return (
-        arestas
-        .head(q)
-        .copy()
-    )
+    if q == 0:
+        return arestas.iloc[0:0].copy()
+
+    return arestas[arestas["rank_max"] <= q].copy()
 
 
 # ============================================================

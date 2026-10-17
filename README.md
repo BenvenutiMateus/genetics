@@ -82,7 +82,7 @@ Directed relationships may also be explored. However, their direction represents
 
 The analysis combines:
 
-- LD-imputed genetic data in PLINK `.raw` format;
+- LD-imputed genetic data in `.raw` format;
 - SNP marker maps;
 - phenotypic variables;
 - sociodemographic covariates.
@@ -113,7 +113,6 @@ Genetica/
 - Matplotlib
 - Streamlit
 - Jupyter Notebook
-- PLINK
 
 ## Project Status
 

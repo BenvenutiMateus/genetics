@@ -46,16 +46,41 @@ Papers about building graphs from data and figuring out which variables are conn
 
 How to pick variables or edges that show up consistently across different samples.
 
-- [ ] **Meinshausen & Bühlmann (2010) — Stability Selection**  
+- [x] **Meinshausen & Bühlmann (2010) — Stability Selection**  
   [Paper](https://arxiv.org/abs/0809.2932) · [PDF](https://arxiv.org/pdf/0809.2932)  
   The key reference for stability selection. Especially important for understanding `q`, selection frequencies, and false positives.
+**My notes:**
+
+- **Main idea:**
+  Introduces Stability Selection, a method that combines
+  subsampling with variable selection algorithms to identify
+  consistently selected variables. It also provides theoretical
+  bounds on the expected number of false selections (E[V])
+  under certain assumptions.
+
+- **What I found interesting:**
+  The theoretical control of false positives is interesting,
+  but the bound on E[V] can be too conservative or uninformative
+  depending on the parameters. Also, a low E[V] does not
+  necessarily mean that the method recovers the true variables.
+  The application to graphical models is particularly relevant.
+
+- **Could I use this in my IC?**
+  Yes. Stability Selection is already a central part of my
+  methodology with Random Forests. I could investigate how
+  the number of selected variables (q) and the stability
+  threshold affect false positives and graph recovery.
+  It would also be interesting to evaluate whether the
+  theoretical error bounds remain useful with correlated
+  SNPs and permutation importance.
+
 
 ## 3. Knockoff Selection
 
 Papers about selecting variables using artificial copies
 (knockoffs) to control false discoveries.
 
-- I still have to search some papers
+- I still have to look for some papers
 
 
 ## 4. Feature Selection & Variable Importance

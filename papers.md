@@ -77,10 +77,48 @@ How to pick variables or edges that show up consistently across different sample
 
 ## 3. Knockoff Selection
 
-Papers about selecting variables using artificial copies
-(knockoffs) to control false discoveries.
+Papers about variable selection with statistical control of the False Discovery Rate (FDR).
 
-- I still have to look for some papers
+- [x] **Barber & Candès (2015) — Controlling the False Discovery Rate via Knockoffs**
+  [Paper](https://arxiv.org/abs/1404.5609) · [PDF](https://arxiv.org/pdf/1404.5609)
+  Introduces Knockoff Selection, a method for variable selection
+  with theoretical control of the False Discovery Rate (FDR).
+
+**My notes:**
+
+- **Main idea:**
+  Introduces Knockoff Selection, a method that creates artificial
+  variables (knockoffs) that preserve the correlation structure
+  of the original variables (preserving the inner product). By comparing the importance of each
+  original variable with its knockoff, the method selects relevant
+  variables while controlling the False Discovery Rate (FDR)
+  under specific assumptions.
+
+- **What I found interesting:**
+  Unlike Stability Selection, which provides bounds on the
+  expected number of false selections (E[V]), Knockoff Selection
+  directly controls the expected proportion of false discoveries
+  among selected variables.
+
+  The idea of using artificial variables as a reference for
+  identifying relevant predictors is particularly interesting.
+  However, the original method assumes a linear Gaussian model
+  and is not directly applicable to high-dimensional problems
+  where p >> n.
+
+- **Could I use this in my IC?**
+  Potentially, but the original method is not suitable for my
+  dataset due to the large number of SNPs compared to individuals.
+
+  It would be interesting to compare Knockoff Selection with
+  Stability Selection in terms of false discoveries, variable
+  selection, and graph recovery. However, generating valid
+  knockoffs for highly correlated SNPs could be challenging.
+
+- [ ] **Candès et al. (2018) — Panning for Gold:
+  Model-X Knockoffs for High-dimensional Controlled
+  Variable Selection**
+  [Paper](https://arxiv.org/pdf/1610.02351)
 
 
 ## 4. Feature Selection & Variable Importance
@@ -145,11 +183,10 @@ How to check whether the graphs are actually useful, beyond just looking nice.
 
 ## Reading order (for now)
 
-1. Meinshausen & Bühlmann (2010) — get the stability selection theory right.
+1. Meinshausen & Bühlmann (2006) — explore LASSO as another option.
 2. Strobl et al. (2008) and Nicodemus et al. (2010) — look into correlated predictors.
 3. Altmann et al. (2010) — study importance scores and their interpretation.
 4. Meng et al. (2009) — connect all of this to SNPs and LD.
-5. Meinshausen & Bühlmann (2006) — explore LASSO as another option.
 
 ## Notes
 
